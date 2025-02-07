@@ -33,8 +33,11 @@ userRouter.post('/signup',async(c)=>{
           name:body.name
         }
       })
+      const token=await sign({
+        id:user.id
+      },c.env.JWT_SECRET)
   
-      return c.text("Signed Up!")
+      return c.json({ jwt: token })
     }catch(e){
       console.log(e)
       c.status(411)
@@ -60,20 +63,19 @@ userRouter.post('/signup',async(c)=>{
       const user=await prisma.user.findFirst({
         where:{
           username:body.username,
-          password:body.password,
-          name:body.name
+          password:body.password
         }
       })
       if(!user){
         c.status(403)
         return c.json({message:"Incorrect Credetials"})
       }
-      const jwt=await sign({
+      const token=await sign({
         id:user.id
       },c.env.JWT_SECRET);
       console.log(c.env.JWT_SECRET)
   
-      return c.text(jwt)
+      return c.json({ jwt: token })
     }catch(e){
       console.log(e)
       c.status(411)

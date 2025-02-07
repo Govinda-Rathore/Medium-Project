@@ -24,6 +24,7 @@ blogRouter.use('/*',async(c,next)=>{
             await next()
         }else{
             c.status(403)
+            alert("user does not exist")
             return c.json({
                 message:"You are not logged in"
             })
@@ -46,7 +47,7 @@ blogRouter.post('/',async (c)=>{
           message:"Inputs not correct"
       })
   }
-    
+    const userId=c.get('userId');
     // const authorId=c.get('userId');
     const prisma=new PrismaClient({ 
         datasourceUrl:c.env.DATABASE_URL,
@@ -57,7 +58,8 @@ blogRouter.post('/',async (c)=>{
             data:{
                 title:body.title,
                 content:body.content,
-                authorId:body.authorId
+                authorId:userId,
+                authorName: body.authorName || 'Anonymous'
             }
         })
     return c.json({
@@ -67,7 +69,7 @@ blogRouter.post('/',async (c)=>{
     catch(e){
         c.status(403)
         console.log(e);
-        return c.text("dwaf")
+        return c.json({ message: 'Error Creating Blog Post' });
     }
   })
   
@@ -99,13 +101,30 @@ blogRouter.put('/',async(c)=>{
 })
 
 blogRouter.get('/bulk',async(c)=>{
-    const body=await c.req.json();
     const prisma=new PrismaClient({
         datasourceUrl:c.env.DATABASE_URL
     }).$extends(withAccelerate())
 
-    const blogs=await prisma.blog.findMany()
-    return c.json({blogs});
+    try {
+    const blogs = await prisma.blog.findMany({
+      select:{
+        content:true,
+        title:true,
+        id:true,
+        author:{
+            select:{
+                name:true
+            }
+        }
+      }
+    });
+    c.status(200)
+    return c.json({ blogs });
+
+  } catch (error) {
+    c.status(403)
+    return c.json({ message: 'Error fetching blogs' });
+  }
 })
   
 blogRouter.get('/:id',async(c)=>{
@@ -118,6 +137,16 @@ blogRouter.get('/:id',async(c)=>{
         const blog=await prisma.blog.findFirst({
             where:{
                 id:Number(id)
+            },
+            select:{
+                content:true,
+                title:true,
+                id:true,
+                author:{
+                    select:{
+                        name:true
+                    }
+                }
             }
         })
         return c.json({blog});
